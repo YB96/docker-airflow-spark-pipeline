@@ -1,0 +1,27 @@
+# .gitignore
+# Environment files
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs and temp files
+logs/
+*.log
+
+# Airflow directories
+airflow/logs/
+airflow/tmp/
+airflow/dags/__pycache__/
+
+# Docker
+*.pid
+*.sock
+
+# Data files (optional)
+data/
+!data/sample/  # keep sample datasets only
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

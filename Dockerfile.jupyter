@@ -1,0 +1,4 @@
+FROM jupyter/all-spark-notebook
+
+# Install kagglehub and other Python dependencies you want inside Jupyter
+RUN pip install kagglehub pandas seaborn matplotlib

@@ -1,0 +1,124 @@
+version: "3.8"
+
+services:
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
+    container_name: superset
+    restart: always
+    environment:
+      SUPERSET_SECRET_KEY: "supersecretkey"   # change this to a long random string
+      SUPERSET_DATABASE_URI: postgresql+psycopg2://postgres:password@postgres:5432/superset_db
+      # Default admin user setup
+      SUPERSET_ADMIN_USERNAME: admin
+      SUPERSET_ADMIN_FIRSTNAME: Superset
+      SUPERSET_ADMIN_LASTNAME: Admin
+      SUPERSET_ADMIN_EMAIL: admin@superset.com
+      SUPERSET_ADMIN_PASSWORD: admin
+    depends_on:
+      - postgres
+    ports:
+      - "8088:8088"
+    volumes:
+      - superset_home:/app/superset_home
+      - ./superset-entrypoint.sh:/superset-entrypoint.sh
+    entrypoint: ["/superset-entrypoint.sh"]
+
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: retail_db
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d/sql
+      - ./data:/datafiles
+      - ./init-ddl.sh:/docker-entrypoint-initdb.d/init-ddl.sh
+
+  spark-master:
+    image: bitnami/spark:3.5.0
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+    volumes:
+      - ./notebooks:/opt/shared/notebooks
+      - ./data:/data
+      - ./jars:/opt/spark/jars
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+
+  spark-worker:
+    image: bitnami/spark:3.5.0
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    volumes:
+      - ./notebooks:/opt/shared/notebooks
+      - ./data:/data
+      - ./jars:/opt/spark/jars
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile.jupyter
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../:/home/jovyan/work
+      - ./jars:/home/jovyan/jars
+      - ./notebooks:/home/jovyan/notebooks
+      - ./jupyter/.kaggle:/home/jovyan/.kaggle
+      - ./data:/data
+    depends_on:
+      - spark-master
+      - spark-worker
+      - postgres
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+    command: >
+      start-notebook.sh
+      --ServerApp.ip=0.0.0.0
+      --ServerApp.allow_origin=*
+      --ServerApp.disable_check_xsrf=True
+      --ServerApp.open_browser=False
+      --ServerApp.token=''
+
+  airflow:
+    container_name: airflow
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@postgres:5432/airflow_db
+      AIRFLOW__WEBSERVER__PORT: 8089
+    ports:
+      - "8089:8089"
+    entrypoint: ["/opt/airflow/entrypoint.sh"]
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./notebooks:/opt/airflow/notebooks
+      - ./output_data:/opt/airflow/output_data
+
+volumes:
+  project_pgdata:
+  superset_home:
+

@@ -1,0 +1,13 @@
+apache-airflow==2.6.3
+pandas
+numpy
+pyarrow
+psycopg2-binary
+papermill
+nbconvert
+matplotlib
+seaborn
+apache-airflow-providers-papermill
+pyspark==3.5.0
+kagglehub
+openpyxl
