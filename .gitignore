@@ -22,6 +22,12 @@ airflow/dags/__pycache__/
 # Data files (optional)
 data/
 !data/sample/  # keep sample datasets only
+output_data/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+jupyter/
+
+#jars
+jars/
+*jar
